@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
+import qrcode
+from io import BytesIO
 
 from backend.user.models import User
 from backend.content.models import Experience  # Import Experience (assuming this app)
@@ -33,13 +35,13 @@ class Booking(models.Model):
     user_id               = models.ForeignKey(
         User, 
         on_delete=models.CASCADE, 
-        related_name='user_id',
+        related_name='user',
         db_index=True
     )
     experience_id            = models.ForeignKey(
         Experience, 
         on_delete=models.CASCADE,  #be careful for cascading. 
-        related_name='experience_id',
+        related_name='experience',
         db_index=True
     )
     booking_date        = models.DateField(
@@ -105,4 +107,102 @@ class Booking(models.Model):
         # Add composite index
         indexes = [
             models.Index(fields=['monument', 'booking_date', 'status']),
+        ]
+
+
+
+class Ticket(models.Model):
+
+    TICKET_TYPE_CHOICES = [
+        ('adult', 'Adult'),
+        ('child', 'Child'),
+        ('senior', 'Senior'),
+    ]
+
+    booking_id               = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name='tickets',
+        db_index=True,
+        help_text='Booking this ticket belongs to'
+    )
+    ticket_type           = models.CharField(
+        max_length=20,
+        choices=TICKET_TYPE_CHOICES,
+        null=False,
+        help_text='Type of ticket (adult, child, senior)'
+    )
+    price                 = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=False,
+        help_text='Price paid for this ticket'
+    )
+    qr_code               = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        null=False,
+        help_text='QR code for entry verification'
+    )
+    is_used               = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Whether ticket has been used for entry'
+    )
+    used_at               = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='When ticket was scanned/used'
+    )
+    created_at            = models.DateTimeField(auto_now_add=True)
+    updated_at            = models.DateTimeField(auto_now=True)
+
+    def mark_as_used(self):
+        """Mark ticket as used when scanned at entry."""
+        self.is_used = True
+        self.used_at = timezone.now()
+        self.save()
+
+    def is_valid(self):
+        """Check if ticket is valid (not used yet)."""
+        return not self.is_used
+
+    def generate_qr_code(self):
+        """Generate QR code for this ticket."""
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(self.qr_code)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        return img
+
+    def get_qr_code_image_base64(self):
+        """Get QR code as base64 string for API response."""
+        import base64
+        
+        img = self.generate_qr_code()
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        
+        img_base64 = base64.b64encode(buffer.getvalue()).decode()
+        return f"data:image/png;base64,{img_base64}"
+
+    def __str__(self):
+        status = "✓ Used" if self.is_used else "✗ Unused"
+        return f"Ticket {self.qr_code} - {self.ticket_type} [{status}]"
+
+    class Meta:
+        db_table = 'tickets'
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['booking']),
+            models.Index(fields=['qr_code']),
+            models.Index(fields=['is_used']),
         ]

@@ -1,25 +1,28 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import ExperienceDetails from "./pages/ExperienceDetails";
-import BookingPage from "./pages/BookingPage";
-import MyBookings from "./pages/MyBookings";
-import Login from "./pages/Login";
-import Navbar from "./components/Navbar";
+//import Home from "./pages/Home";
+ // import ExperienceDetails from "./pages/ExperienceDetails";
+ //import BookingPage from "./pages/BookingPage";
+//import MyBookings from "./pages/MyBookings";
+//import Login from "./pages/Login";
+//import Navbar from "./components/Navbar";
 
+import LoginSignup from "./components/LoginSignup";
 function App() {
   return (
-    <BrowserRouter>
-      <Navbar />
+    //<BrowserRouter>
+     // <Navbar />
 
-      <Routes>
+    /* <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/experience/:id" element={<ExperienceDetails />} />
         <Route path="/booking/:id" element={<BookingPage />} />
         <Route path="/my-bookings" element={<MyBookings />} />
-        <Route path="/login" element={<Login />} />
-      </Routes>
-
-    </BrowserRouter>
+        <Route path="/login" element={<LoginSignup />} />
+      </Routes>*/
+     
+   // </BrowserRouter>
+    <LoginSignup />
+   
   );
 }
 
